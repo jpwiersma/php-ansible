@@ -186,12 +186,18 @@ final class AnsiblePlaybook extends AbstractAnsibleCommand implements AnsiblePla
      * $ansible = new Ansible()->playbook()->extraVars('path=/some/path');
      * ```
      *
-     * @param string|array $extraVars
+     * @param string|array|json $extraVars
      * @return AnsiblePlaybookInterface
      */
     public function extraVars(string|array $extraVars = ''): AnsiblePlaybookInterface
     {
         if (empty($extraVars)) {
+            return $this;
+        }
+
+        // Add JSON as extra-vars data
+        if(is_string($extraVars) && is_array(json_decode($extraVars, true)) && (json_last_error() == JSON_ERROR_NONE) ? true : false) {
+            $this->addOption('--extra-vars', $extraVars);
             return $this;
         }
 
@@ -207,7 +213,7 @@ final class AnsiblePlaybook extends AbstractAnsibleCommand implements AnsiblePla
 
         // At this point, the only allowed type is string.
         if (!is_string($extraVars)) {
-            throw new InvalidArgumentException(sprintf('Expected string|array, got "%s"', gettype($extraVars)));
+            throw new InvalidArgumentException(sprintf('Expected string|array|json, got "%s"', gettype($extraVars)));
         }
 
         if (!str_contains($extraVars, '=')) {
