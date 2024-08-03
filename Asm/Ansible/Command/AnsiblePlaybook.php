@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Asm\Ansible\Command;
 
+use Asm\Ansible\Utils\Str;
 use InvalidArgumentException;
 
 /**
@@ -180,24 +181,26 @@ final class AnsiblePlaybook extends AbstractAnsibleCommand implements AnsiblePla
      *
      * ## String
      * You can also pass the raw extra vars string directly.
-
+     *
      * Example:
      * ```php
      * $ansible = new Ansible()->playbook()->extraVars('path=/some/path');
      * ```
      *
-     * @param string|array|json $extraVars
+     * ## JSON String
+     * You can also use a JSON string to pass the key/value pairs of extra vars.
+     *
+     * Example:
+     * ```php
+     * $ansible = new Ansible()->playbook()->extraVars('{ "key1": "value1" }');
+     * ```
+     *
+     * @param string|array $extraVars
      * @return AnsiblePlaybookInterface
      */
     public function extraVars(string|array $extraVars = ''): AnsiblePlaybookInterface
     {
         if (empty($extraVars)) {
-            return $this;
-        }
-
-        // Add JSON as extra-vars data
-        if(is_string($extraVars) && is_array(json_decode($extraVars, true)) && (json_last_error() == JSON_ERROR_NONE) ? true : false) {
-            $this->addOption('--extra-vars', $extraVars);
             return $this;
         }
 
@@ -213,7 +216,22 @@ final class AnsiblePlaybook extends AbstractAnsibleCommand implements AnsiblePla
 
         // At this point, the only allowed type is string.
         if (!is_string($extraVars)) {
-            throw new InvalidArgumentException(sprintf('Expected string|array|json, got "%s"', gettype($extraVars)));
+            throw new InvalidArgumentException(sprintf('Expected string|array, got "%s"', gettype($extraVars)));
+        }
+
+        // Trim the string & check if empty before moving on.
+        $extraVars = trim($extraVars);
+
+        if ($extraVars === '') {
+            return $this;
+        }
+
+        // JSON formatted string can be used for extra vars as is.
+        // The value is automatically escaped & wrapped around single quotes from the Library's process.
+        if (Str::isJsonFormatted($extraVars)) {
+            $this->addOption('--extra-vars', $extraVars);
+
+            return $this;
         }
 
         if (!str_contains($extraVars, '=')) {
